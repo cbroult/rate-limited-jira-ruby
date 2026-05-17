@@ -1,0 +1,29 @@
+AllCops:
+  NewCops: enable
+
+plugins:
+  - rubocop-rake
+  - rubocop-rspec
+
+RSpec/ExampleLength:
+  Enabled: true
+  Max: 10
+
+RSpec/MessageExpectation:
+  Enabled: false
+
+RSpec/MessageSpies:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: true
+  Max: 4
+
+Style/Documentation:
+  Enabled: false
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes

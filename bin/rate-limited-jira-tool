@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "rate_limited_jira"
+
+begin
+  client = RateLimitedJira::Client.build(
+    {
+      username: ENV.fetch("JIRA_USERNAME"),
+      password: ENV.fetch("JIRA_API_TOKEN"),
+      site: ENV.fetch("JIRA_SITE_URL"),
+      context_path: ENV.fetch("JIRA_CONTEXT_PATH", ""),
+      auth_type: :basic
+    },
+    rate_limit_per_interval: ENV.fetch("JAT_RATE_LIMIT_PER_INTERVAL", "0").to_i,
+    rate_interval_in_seconds: ENV.fetch("JAT_RATE_INTERVAL_IN_SECONDS", "0").to_i,
+    implementation: ENV.fetch("JAT_RATE_LIMIT_IMPLEMENTATION", "")
+  )
+  3.times { client.Board.all }
+rescue StandardError => e
+  warn "#{e.class}: #{e.message}"
+  exit 1
+end

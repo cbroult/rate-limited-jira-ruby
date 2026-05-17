@@ -1,0 +1,20 @@
+# frozen_string_literal: true
+
+require "rspec/core/rake_task"
+require "rubocop/rake_task"
+require "cucumber/rake/task"
+
+RSpec::Core::RakeTask.new(:spec)
+
+RuboCop::RakeTask.new(:rubocop) do |task|
+  task.options = ["--autocorrect"]
+end
+
+Cucumber::Rake::Task.new do |t|
+  t.profile = "rake"
+end
+
+task default: :verify
+
+desc "Run all checks"
+task verify: %i[rubocop spec cucumber]

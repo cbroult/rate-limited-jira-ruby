@@ -1,0 +1,2 @@
+default: --format pretty --publish-quiet
+rake:    --format progress --publish-quiet --tags 'not @wip'
