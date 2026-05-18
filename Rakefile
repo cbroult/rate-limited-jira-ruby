@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "bundler/gem_tasks"
+require "rake/gem/maintenance/install_tasks"
 require "rspec/core/rake_task"
 require "rubocop/rake_task"
 require "cucumber/rake/task"

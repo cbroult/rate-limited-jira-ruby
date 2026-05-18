@@ -8,6 +8,7 @@ group :development do
   gem "aruba"
   gem "cucumber"
   gem "rake"
+  gem "rake-gem-maintenance"
   gem "rspec"
   gem "rubocop"
   gem "rubocop-rake", require: false
