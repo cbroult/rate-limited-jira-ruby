@@ -10,7 +10,7 @@ end
 
 Then(/^successfully running `(.*)` takes between (.*) and (.*) seconds$/) do |cmd, min, max|
   start_time = Time.now
-  run_command_and_stop(cmd, fail_on_error: true, timeout: max.to_i + BUFFER_TIME_IN_SECONDS)
+  run_command_and_stop(cmd, fail_on_error: true, exit_timeout: max.to_i + BUFFER_TIME_IN_SECONDS)
   end_time = Time.now
   expect(end_time - start_time).to be_between(min.to_i, max.to_i)
 end
