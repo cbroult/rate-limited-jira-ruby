@@ -1,0 +1,113 @@
+# publish.yml — test → auto-bump → build → publish to rubygems.org
+#
+# Triggers:
+#   - push to main
+#   - tag push refs/tags/v*
+#   - manual
+#
+# Required WP CI secrets (org-level cbp-org):
+#   forgejo_push_token   — Forgejo PAT with write on this repo (auto-bump)
+#   rubygems_api_key     — rubygems.org API key with Push scope
+#   rubygems_otp_seed    — TOTP seed (base-32) for rubygems.org MFA
+#   rubygems_username    — rubygems.org username (ApiKeyRenewer)
+#   rubygems_password    — rubygems.org password (ApiKeyRenewer)
+#   woodpecker_api_token — WP API token (ApiKeyRenewer writes renewed key back)
+#   jira_site_url        — Jira site URL (cucumber test gate)
+#   jira_username        — Jira username
+#   jira_api_token       — Jira API token
+#   badge_service_token  — badge.cbp-org.internal write token
+
+labels:
+  platform: linux
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.8.0
+    settings:
+      skip_verify: true
+    backend_options:
+      docker:
+        extra_hosts:
+          - "git.cbp-org.internal:192.168.16.23"
+
+when:
+  - event: push
+    branch: main
+  - event: tag
+    ref: refs/tags/v*
+  - event: manual
+
+steps:
+  - name: test
+    image: ruby:4.0.3
+    backend_options:
+      docker:
+        network_mode: host
+    environment:
+      CUCUMBER_PUBLISH_QUIET: "true"
+      JIRA_SITE_URL:
+        from_secret: jira_site_url
+      JIRA_USERNAME:
+        from_secret: jira_username
+      JIRA_API_TOKEN:
+        from_secret: jira_api_token
+    commands:
+      - apt-get update -qq && apt-get install -y --no-install-recommends redis-server && rm -rf /var/lib/apt/lists/*
+      - redis-server --daemonize yes
+      - bundle install --jobs 4 --retry 3
+      - bundle exec rake verify
+
+  - name: auto-bump
+    image: ruby:4.0.3
+    when:
+      event: push
+      branch: main
+    backend_options:
+      docker:
+        extra_hosts:
+          - "git.cbp-org.internal:192.168.16.23"
+    environment:
+      FORGEJO_PUSH_TOKEN:
+        from_secret: forgejo_push_token
+    commands:
+      - bundle install --jobs 4 --retry 3 --quiet
+      - sh scripts/auto-bump.sh
+
+  - name: build-gem
+    image: ruby:4.0.3
+    commands:
+      - gem build rate-limited-jira-ruby.gemspec
+
+  - name: publish-rubygems
+    image: ruby:4.0.3
+    environment:
+      GEM_HOST_API_KEY:
+        from_secret: rubygems_api_key
+      RUBYGEMS_OTP_SEED:
+        from_secret: rubygems_otp_seed
+      RUBYGEMS_USERNAME:
+        from_secret: rubygems_username
+      RUBYGEMS_PASSWORD:
+        from_secret: rubygems_password
+      WOODPECKER_TOKEN:
+        from_secret: woodpecker_api_token
+      WOODPECKER_SERVER: https://ci.cbp-org.internal
+      WOODPECKER_ORG: cbp-org
+      CI: "true"
+    commands:
+      - bundle install --jobs 4 --retry 3
+      - bundle exec rake publish:rubygems
+
+  - name: badge
+    image: docker-registry.cbp-org.internal/badge-reporter:latest
+    when:
+      status: [success, failure]
+    backend_options:
+      docker:
+        extra_hosts:
+          - "badge.cbp-org.internal:192.168.16.23"
+    environment:
+      BADGE_SECRET:
+        from_secret: badge_service_token
+    commands:
+      - badge report publish

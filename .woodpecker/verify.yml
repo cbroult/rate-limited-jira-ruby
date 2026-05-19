@@ -1,0 +1,49 @@
+labels:
+  platform: linux
+
+when:
+  event: [push, pull_request, manual]
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.8.0
+    settings:
+      skip_verify: true
+    backend_options:
+      docker:
+        extra_hosts:
+          - "git.cbp-org.internal:192.168.16.23"
+
+steps:
+  - name: verify
+    image: ruby:4.0.3
+    backend_options:
+      docker:
+        network_mode: host
+    environment:
+      CUCUMBER_PUBLISH_QUIET: "true"
+      JIRA_SITE_URL:
+        from_secret: jira_site_url
+      JIRA_USERNAME:
+        from_secret: jira_username
+      JIRA_API_TOKEN:
+        from_secret: jira_api_token
+    commands:
+      - apt-get update -qq && apt-get install -y --no-install-recommends redis-server && rm -rf /var/lib/apt/lists/*
+      - redis-server --daemonize yes
+      - bundle install --jobs 4 --retry 3
+      - bundle exec rake verify
+
+  - name: badge
+    image: docker-registry.cbp-org.internal/badge-reporter:latest
+    when:
+      status: [success, failure]
+    backend_options:
+      docker:
+        extra_hosts:
+          - "badge.cbp-org.internal:192.168.16.23"
+    environment:
+      BADGE_SECRET:
+        from_secret: badge_service_token
+    commands:
+      - badge report verify
