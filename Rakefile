@@ -16,14 +16,6 @@ Cucumber::Rake::Task.new do |t|
   t.profile = "rake"
 end
 
-namespace :publish do
-  desc "Push the built .gem file to rubygems.org"
-  task :rubygems do
-    require_relative "rakelib/rubygems_publisher"
-    RubygemsPublisher.publish
-  end
-end
-
 task default: :verify
 
 desc "Run all checks"
